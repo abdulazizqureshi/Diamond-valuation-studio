@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diamond Price Prediction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+</head>
+<body>
+<div class="studio">
+  <header class="brand rise">
+    <h1>Diamond Valuation Studio</h1>
+    <p>Enter the specifications &middot; watch the stone respond</p>
+  </header>
+
+  <main class="stage">
+    <!-- LEFT: 3D viewport -->
+    <section class="glass tilt viewport rise" aria-label="3D diamond viewport">
+      <div class="hud" id="hud" aria-live="polite">
+        <span><b id="hCarat">0.70</b> ct</span><i>•</i>
+        <span id="hCut">Ideal</span><i>•</i>
+        <span>Color <b id="hColor">E</b></span><i>•</i>
+        <span id="hClarity">VS1</span>
+      </div>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="gl"></canvas>
+        <div class="fallback" aria-hidden="true">
+          <svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="fg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#e0f2fe"/><stop offset=".5" stop-color="#38bdf8"/><stop offset="1" stop-color="#fde68a"/>
+              </linearGradient>
+            </defs>
+            <polygon points="50,10 150,10 195,65 100,172 5,65" fill="url(#fg)" opacity=".9"/>
+            <polyline points="5,65 195,65 100,172 50,10 100,65 150,10 100,172 5,65" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="hint">DRAG TO ROTATE</div>
+      </div>
+
+      <div class="presets">
+        <button type="button" class="preset" data-preset="0">0.70 ct Ideal E/VS1</button>
+        <button type="button" class="preset" data-preset="1">1.50 ct Premium G/VVS2</button>
+        <button type="button" class="preset" data-preset="2">2.20 ct Signature D/IF</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: Form -->
+    <section class="glass tilt valuation rise d2">
+      <h2>Valuation Form</h2>
+      <p class="sub">All measurements are required.</p>
+
+      <form id="valForm" action="{{url_for('predict_datapoint')}}" method="POST" novalidate>
+        <div class="group">
+          <div class="group-title">Weight &amp; Proportions</div>
+          <div class="row c3">
+            <div class="form-group">
+              <label for="carat">Carat</label>
+              <input type="number" step="any" min="0" required id="carat" name="carat" placeholder="0.70">
+            </div>
+            <div class="form-group">
+              <label for="depth">Depth %</label>
+              <input type="number" step="any" min="0" required id="depth" name="depth" placeholder="61.5">
+            </div>
+            <div class="form-group">
+              <label for="table">Table %</label>
+              <input type="number" step="any" min="0" required id="table" name="table" placeholder="57">
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">3D Dimensions (mm)</div>
+          <div class="row c3">
+            <div class="form-group">
+              <label for="x">x</label>
+              <input type="number" step="any" min="0" required id="x" name="x" placeholder="5.70">
+            </div>
+            <div class="form-group">
+              <label for="y">y</label>
+              <input type="number" step="any" min="0" required id="y" name="y" placeholder="5.72">
+            </div>
+            <div class="form-group">
+              <label for="z">z</label>
+              <input type="number" step="any" min="0" required id="z" name="z" placeholder="3.52">
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">4Cs Grading</div>
+          <div class="row c3">
+            <div class="form-group">
+              <label for="cut">Cut</label>
+              <select id="cut" name="cut">
+                <option value="Fair">Fair</option>
+                <option value="Good">Good</option>
+                <option value="Very Good">Very Good</option>
+                <option value="Premium">Premium</option>
+                <option value="Ideal">Ideal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="color">Color</label>
+              <select id="color" name="color">
+                <option value="D">D</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="G">G</option>
+                <option value="H">H</option>
+                <option value="I">I</option>
+                <option value="J">J</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="clarity">Clarity</label>
+              <select id="clarity" name="clarity">
+                <option value="I1">I1</option>
+                <option value="SI2">SI2</option>
+                <option value="SI1">SI1</option>
+                <option value="VS2">VS2</option>
+                <option value="VS1">VS1</option>
+                <option value="VVS2">VVS2</option>
+                <option value="VVS1">VVS1</option>
+                <option value="IF">IF</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn" id="submitBtn">
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="btnLabel">Estimate Diamond Value</span>
+        </button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<div class="calc-overlay" id="calc"><div class="ring"></div><div>Calculating valuation…</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------------- 3D tilt on glass cards ---------------- */
+  document.querySelectorAll(".tilt").forEach(function (card) {
+    card.addEventListener("mousemove", function (e) {
+      var r = card.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width - 0.5;
+      var py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = "perspective(1000px) rotateX(" + (-py * 5).toFixed(2) + "deg) rotateY(" + (px * 5).toFixed(2) + "deg)";
+    });
+    card.addEventListener("mouseleave", function () {
+      card.style.transform = "perspective(1000px) rotateX(0) rotateY(0)";
+    });
+  });
+
+  /* ---------------- Diamond scene ---------------- */
+  var wrap = $("canvasWrap"), canvas = $("gl");
+  var renderer = null, scene, camera, group, mat, edges, particles;
+  var state = { scale: 1, tScale: 1, bril: 0.8, tBril: 0.8, spin: 0.004, tSpin: 0.004,
+                tint: new THREE.Color("#f4faff"), tTint: new THREE.Color("#f4faff"),
+                dragging: false, vx: 0, vy: 0 };
+
+  function buildDiamond() {
+    var N = 8, R = 1.0, TR = 0.55, crownH = 0.38, pavH = 0.95;
+    var T = [], G = [], tip = [0, -pavH, 0], i, a;
+    for (i = 0; i < N; i++) { a = i * 2 * Math.PI / N; T.push([TR * Math.cos(a), crownH, TR * Math.sin(a)]); }
+    for (i = 0; i < 2 * N; i++) { a = i * Math.PI / N; G.push([R * Math.cos(a), 0, R * Math.sin(a)]); }
+    var v = [];
+    function tri(p, q, r) { v.push(p[0], p[1], p[2], q[0], q[1], q[2], r[0], r[1], r[2]); }
+    var c = [0, crownH, 0];
+    for (i = 0; i < N; i++) {
+      var i1 = (i + 1) % N;
+      tri(c, T[i1], T[i]);                              // table
+      tri(T[i], T[i1], G[(2 * i + 1) % (2 * N)]);       // bezel
+      tri(T[i], G[(2 * i + 1) % (2 * N)], G[2 * i]);    // upper-girdle
+      tri(T[i1], G[(2 * i + 2) % (2 * N)], G[(2 * i + 1) % (2 * N)]);
+    }
+    for (i = 0; i < 2 * N; i++) tri(G[i], tip, G[(i + 1) % (2 * N)]); // pavilion
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+    g.computeVertexNormals();
+    return g;
+  }
+
+  var vert = "varying vec3 vN; varying vec3 vV; varying vec3 vP;" +
+    "void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0);" +
+    "vV = normalize(-mv.xyz); vP = position; gl_Position = projectionMatrix * mv; }";
+  var frag = "uniform vec3 uTint; uniform float uTime; uniform float uBril; varying vec3 vN; varying vec3 vV; varying vec3 vP;" +
+    "void main(){ vec3 n = normalize(vN); vec3 v = normalize(vV); float d = abs(dot(n,v));" +
+    "float fres = pow(1.0 - d, 2.2);" +
+    "vec3 prism = 0.5 + 0.5 * cos(6.28318 * (vec3(0.0,0.33,0.67) + d*1.4 + vP.y*0.35 + uTime*0.05));" +
+    "vec3 L = normalize(vec3(0.5,0.9,0.7)); float spec = pow(max(dot(reflect(-v,n), L),0.0), 24.0);" +
+    "vec3 L2 = normalize(vec3(-0.7,0.3,0.6)); float spec2 = pow(max(dot(reflect(-v,n), L2),0.0), 40.0);" +
+    "vec3 base = mix(uTint, prism, 0.18 + 0.32*uBril);" +
+    "vec3 col = base * (0.3 + 0.7*d) + fres*vec3(0.22,0.74,0.97)*0.7 + (spec*vec3(1.0,0.95,0.75) + spec2*vec3(0.7,0.9,1.0))*(0.5+uBril);" +
+    "gl_FragColor = vec4(col, 0.9); }";
+
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    camera.position.set(0, 0.4, 5.2);
+
+    group = new THREE.Group();
+    var geo = buildDiamond();
+    mat = new THREE.ShaderMaterial({
+      vertexShader: vert, fragmentShader: frag, transparent: true, side: THREE.DoubleSide,
+      uniforms: { uTint: { value: state.tint.clone() }, uTime: { value: 0 }, uBril: { value: state.bril } }
+    });
+    group.add(new THREE.Mesh(geo, mat));
+    edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 1),
+      new THREE.LineBasicMaterial({ color: 0x8be0ff, transparent: true, opacity: 0.55 }));
+    group.add(edges);
+    group.position.y = 0.15;
+    scene.add(group);
+
+    var pc = 160, pp = new Float32Array(pc * 3);
+    for (var k = 0; k < pc; k++) {
+      pp[k * 3] = (Math.random() - 0.5) * 10; pp[k * 3 + 1] = (Math.random() - 0.5) * 6; pp[k * 3 + 2] = (Math.random() - 0.5) * 6 - 1;
+    }
+    var pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.BufferAttribute(pp, 3));
+    particles = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xfde68a, size: 0.035, transparent: true, opacity: 0.8, depthWrite: false }));
+    scene.add(particles);
+  } catch (err) {
+    renderer = null;
+    wrap.classList.add("no-webgl");
+    canvas.style.display = "none";
+  }
+
+  function resize() {
+    if (!renderer) return;
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  /* Drag rotation (mouse + touch via pointer events) */
+  var lx = 0, ly = 0;
+  wrap.addEventListener("pointerdown", function (e) { state.dragging = true; lx = e.clientX; ly = e.clientY; try { wrap.setPointerCapture(e.pointerId); } catch (_) {} });
+  wrap.addEventListener("pointermove", function (e) {
+    if (!state.dragging) return;
+    state.vy = (e.clientX - lx) * 0.01; state.vx = (e.clientY - ly) * 0.01; lx = e.clientX; ly = e.clientY;
+    if (group) { group.rotation.y += state.vy; group.rotation.x = Math.max(-0.9, Math.min(0.9, group.rotation.x + state.vx)); }
+  });
+  function endDrag() { state.dragging = false; }
+  wrap.addEventListener("pointerup", endDrag); wrap.addEventListener("pointercancel", endDrag);
+
+  var clock = 0;
+  function loop() {
+    requestAnimationFrame(loop);
+    if (!renderer) return;
+    clock += 0.016;
+    state.scale += (state.tScale - state.scale) * 0.08;
+    state.bril += (state.tBril - state.bril) * 0.08;
+    state.spin += (state.tSpin - state.spin) * 0.08;
+    state.tint.lerp(state.tTint, 0.08);
+    if (!state.dragging) {
+      group.rotation.y += state.spin + state.vy; state.vy *= 0.94;
+      group.rotation.x += (0.12 - group.rotation.x) * 0.02;
+    }
+    group.scale.setScalar(state.scale);
+    group.position.y = 0.15 + Math.sin(clock * 1.2) * 0.07;
+    mat.uniforms.uTint.value.copy(state.tint);
+    mat.uniforms.uBril.value = state.bril;
+    mat.uniforms.uTime.value = clock;
+    edges.material.opacity = 0.35 + state.bril * 0.35;
+    particles.rotation.y += 0.0007;
+    particles.material.opacity = 0.5 + 0.35 * Math.sin(clock * 2.0);
+    renderer.render(scene, camera);
+  }
+  loop();
+
+  /* ---------------- Form coupling ---------------- */
+  var f = { carat: $("carat"), depth: $("depth"), table: $("table"), x: $("x"), y: $("y"), z: $("z"),
+            cut: $("cut"), color: $("color"), clarity: $("clarity") };
+  var cutMap = { "Fair": [0.35, 0.002], "Good": [0.55, 0.003], "Very Good": [0.8, 0.004], "Premium": [1.05, 0.006], "Ideal": [1.3, 0.008] };
+  var colorMap = { D: "#f4faff", E: "#f1f8fb", F: "#f6f6ee", G: "#faf1da", H: "#fbebc8", I: "#fbe4b4", J: "#f9dca0" };
+
+  function sync() {
+    var c = parseFloat(f.carat.value);
+    var shown = (isFinite(c) && c > 0) ? c : 0.7;
+    state.tScale = Math.max(0.6, Math.min(1.7, 0.55 + Math.cbrt(shown) * 0.5));
+    var cm = cutMap[f.cut.value] || cutMap["Ideal"];
+    state.tBril = cm[0]; state.tSpin = cm[1];
+    state.tTint.set(colorMap[f.color.value] || "#f4faff");
+    $("hCarat").textContent = shown.toFixed(2);
+    $("hCut").textContent = f.cut.value;
+    $("hColor").textContent = f.color.value;
+    $("hClarity").textContent = f.clarity.value;
+  }
+  ["carat", "cut", "color", "clarity"].forEach(function (k) {
+    f[k].addEventListener("input", sync); f[k].addEventListener("change", sync);
+  });
+
+  var presets = [
+    { carat: 0.70, depth: 61.5, table: 56, x: 5.70, y: 5.72, z: 3.52, cut: "Ideal",   color: "E", clarity: "VS1" },
+    { carat: 1.50, depth: 61.8, table: 59, x: 7.30, y: 7.25, z: 4.50, cut: "Premium", color: "G", clarity: "VVS2" },
+    { carat: 2.20, depth: 61.9, table: 57, x: 8.30, y: 8.35, z: 5.15, cut: "Ideal",   color: "D", clarity: "IF" }
+  ];
+  document.querySelectorAll(".preset").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var p = presets[+b.getAttribute("data-preset")];
+      Object.keys(p).forEach(function (k) { f[k].value = p[k]; });
+      sync();
+      state.vy = 0.25; // little spin burst as it morphs
+    });
+  });
+  sync();
+
+  /* ---------------- Validation + spinner ---------------- */
+  var form = $("valForm");
+  form.addEventListener("submit", function (e) {
+    var ok = true, first = null;
+    ["carat", "depth", "table", "x", "y", "z"].forEach(function (k) {
+      var el = f[k], val = parseFloat(el.value);
+      if (!isFinite(val) || val < 0 || el.value.trim() === "") {
+        ok = false; el.style.borderColor = "#f87171"; if (!first) first = el;
+      } else { el.style.borderColor = ""; }
+    });
+    if (!ok) { e.preventDefault(); first.focus(); return; }
+    $("submitBtn").classList.add("loading");
+    $("submitBtn").disabled = true;
+    $("btnLabel").textContent = "Calculating…";
+    $("calc").classList.add("show");
+  });
+  window.addEventListener("pageshow", function () {
+    $("submitBtn").classList.remove("loading"); $("submitBtn").disabled = false;
+    $("btnLabel").textContent = "Estimate Diamond Value"; $("calc").classList.remove("show");
+  });
+})();
+</script>
+</body>
+</html>

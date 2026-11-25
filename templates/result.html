@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diamond Valuation Result</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+</head>
+<body>
+<div class="studio">
+  <header class="brand rise">
+    <h1>Diamond Valuation Studio</h1>
+    <p>Your valuation is ready</p>
+  </header>
+
+  <main class="result-stage">
+    <div class="hero-canvas rise" id="canvasWrap">
+      <canvas id="gl"></canvas>
+      <div class="fallback" aria-hidden="true">
+        <svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="fg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#e0f2fe"/><stop offset=".5" stop-color="#38bdf8"/><stop offset="1" stop-color="#fde68a"/>
+            </linearGradient>
+          </defs>
+          <polygon points="50,10 150,10 195,65 100,172 5,65" fill="url(#fg)" opacity=".9"/>
+          <polyline points="5,65 195,65 100,172 50,10 100,65 150,10 100,172 5,65" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <section class="glass tilt cert rise d2">
+      <div class="seal">&#9670; Certified Valuation &#9670;</div>
+      <h2>The Diamond price will be</h2>
+      <div class="price"><span class="cur">$</span><span id="finalResult">{{ final_result }}</span></div>
+      <p class="note">Estimated by our machine-learning pricing model from your stone's specifications.</p>
+      <a class="btn" href="{{ url_for('predict_datapoint') }}">Value Another Diamond</a>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* 3D tilt */
+  document.querySelectorAll(".tilt").forEach(function (card) {
+    card.addEventListener("mousemove", function (e) {
+      var r = card.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = "perspective(1000px) rotateX(" + (-py * 6).toFixed(2) + "deg) rotateY(" + (px * 6).toFixed(2) + "deg)";
+    });
+    card.addEventListener("mouseleave", function () { card.style.transform = "perspective(1000px) rotateX(0) rotateY(0)"; });
+  });
+
+  var wrap = $("canvasWrap"), canvas = $("gl");
+  var renderer = null, scene, camera, group, mat, edges, particles, dragging = false, vy = 0;
+
+  function buildDiamond() {
+    var N = 8, R = 1.0, TR = 0.55, crownH = 0.38, pavH = 0.95, i, a, T = [], G = [], tip = [0, -pavH, 0], v = [];
+    for (i = 0; i < N; i++) { a = i * 2 * Math.PI / N; T.push([TR * Math.cos(a), crownH, TR * Math.sin(a)]); }
+    for (i = 0; i < 2 * N; i++) { a = i * Math.PI / N; G.push([R * Math.cos(a), 0, R * Math.sin(a)]); }
+    function tri(p, q, r) { v.push(p[0], p[1], p[2], q[0], q[1], q[2], r[0], r[1], r[2]); }
+    var c = [0, crownH, 0];
+    for (i = 0; i < N; i++) {
+      var i1 = (i + 1) % N;
+      tri(c, T[i1], T[i]);
+      tri(T[i], T[i1], G[(2 * i + 1) % (2 * N)]);
+      tri(T[i], G[(2 * i + 1) % (2 * N)], G[2 * i]);
+      tri(T[i1], G[(2 * i + 2) % (2 * N)], G[(2 * i + 1) % (2 * N)]);
+    }
+    for (i = 0; i < 2 * N; i++) tri(G[i], tip, G[(i + 1) % (2 * N)]);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+    g.computeVertexNormals();
+    return g;
+  }
+
+  var vert = "varying vec3 vN; varying vec3 vV; varying vec3 vP;" +
+    "void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0);" +
+    "vV = normalize(-mv.xyz); vP = position; gl_Position = projectionMatrix * mv; }";
+  var frag = "uniform vec3 uTint; uniform float uTime; uniform float uBril; varying vec3 vN; varying vec3 vV; varying vec3 vP;" +
+    "void main(){ vec3 n = normalize(vN); vec3 v = normalize(vV); float d = abs(dot(n,v));" +
+    "float fres = pow(1.0 - d, 2.2);" +
+    "vec3 prism = 0.5 + 0.5 * cos(6.28318 * (vec3(0.0,0.33,0.67) + d*1.4 + vP.y*0.35 + uTime*0.08));" +
+    "vec3 L = normalize(vec3(0.5,0.9,0.7)); float spec = pow(max(dot(reflect(-v,n), L),0.0), 24.0);" +
+    "vec3 L2 = normalize(vec3(-0.7,0.3,0.6)); float spec2 = pow(max(dot(reflect(-v,n), L2),0.0), 40.0);" +
+    "vec3 base = mix(uTint, prism, 0.18 + 0.32*uBril);" +
+    "vec3 col = base * (0.3 + 0.7*d) + fres*vec3(0.22,0.74,0.97)*0.8 + (spec*vec3(1.0,0.95,0.75) + spec2*vec3(0.7,0.9,1.0))*(0.5+uBril);" +
+    "gl_FragColor = vec4(col, 0.92); }";
+
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    camera.position.set(0, 0.4, 5.2);
+
+    group = new THREE.Group();
+    var geo = buildDiamond();
+    mat = new THREE.ShaderMaterial({
+      vertexShader: vert, fragmentShader: frag, transparent: true, side: THREE.DoubleSide,
+      uniforms: { uTint: { value: new THREE.Color("#f4faff") }, uTime: { value: 0 }, uBril: { value: 1.3 } }
+    });
+    group.add(new THREE.Mesh(geo, mat));
+    edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 1),
+      new THREE.LineBasicMaterial({ color: 0xfde68a, transparent: true, opacity: 0.6 }));
+    group.add(edges);
+    group.scale.setScalar(1.15);
+    scene.add(group);
+
+    var pc = 220, pp = new Float32Array(pc * 3);
+    for (var k = 0; k < pc; k++) {
+      pp[k * 3] = (Math.random() - 0.5) * 9; pp[k * 3 + 1] = (Math.random() - 0.5) * 6; pp[k * 3 + 2] = (Math.random() - 0.5) * 5 - 0.5;
+    }
+    var pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.BufferAttribute(pp, 3));
+    particles = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xfde68a, size: 0.045, transparent: true, opacity: 0.9, depthWrite: false }));
+    scene.add(particles);
+  } catch (err) {
+    renderer = null; wrap.classList.add("no-webgl"); canvas.style.display = "none";
+  }
+
+  function resize() {
+    if (!renderer) return;
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize); resize();
+
+  var lx = 0, ly = 0;
+  wrap.addEventListener("pointerdown", function (e) { dragging = true; lx = e.clientX; ly = e.clientY; try { wrap.setPointerCapture(e.pointerId); } catch (_) {} });
+  wrap.addEventListener("pointermove", function (e) {
+    if (!dragging || !group) return;
+    vy = (e.clientX - lx) * 0.01; group.rotation.y += vy;
+    group.rotation.x = Math.max(-0.9, Math.min(0.9, group.rotation.x + (e.clientY - ly) * 0.01));
+    lx = e.clientX; ly = e.clientY;
+  });
+  function end() { dragging = false; }
+  wrap.addEventListener("pointerup", end); wrap.addEventListener("pointercancel", end);
+
+  var t = 0;
+  function loop() {
+    requestAnimationFrame(loop);
+    if (!renderer) return;
+    t += 0.016;
+    if (!dragging) { group.rotation.y += 0.014 + vy; vy *= 0.94; group.rotation.x += (0.12 - group.rotation.x) * 0.03; }
+    group.position.y = Math.sin(t * 1.4) * 0.12;
+    var pulse = 1.15 + Math.sin(t * 2.0) * 0.03;
+    group.scale.setScalar(pulse);
+    mat.uniforms.uTime.value = t;
+    edges.material.opacity = 0.45 + 0.25 * Math.sin(t * 3.0);
+    particles.rotation.y += 0.0012;
+    particles.material.opacity = 0.6 + 0.35 * Math.sin(t * 2.5);
+    renderer.render(scene, camera);
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
