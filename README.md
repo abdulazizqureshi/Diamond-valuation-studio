@@ -3,6 +3,7 @@
 An end-to-end machine learning web application that predicts diamond prices based on physical dimensions and gemological attributes (carat, cut, color, clarity, depth, and table). Built with a modular Python package architecture, Scikit-Learn pipelines, DVC, MLflow tracking, Docker, and an interactive 3D Three.js + Flask web interface.
 
 ---
+<img width="1350" height="597" alt="image" src="https://github.com/user-attachments/assets/3f60d42e-6e6d-4970-bc29-fc147f8b4558" />
 
 ## Project Architecture
 
